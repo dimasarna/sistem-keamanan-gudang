@@ -1,17 +1,3 @@
-// Custom data structure
-typedef struct FileMessage // For wrap file details before sending to queue
-{
-  char fileName[40];
-  unsigned long fileSize;
-} FileMessage;
-
-enum relative // Used when setting position within a file stream.
-{
-  FROM_START,
-  FROM_CURRENT,
-  FROM_END
-};
-
 #define APP_CPU 1
 #define PRO_CPU 0
 #define APPVER "1.0.0"
@@ -57,6 +43,20 @@ enum relative // Used when setting position within a file stream.
 #include "esp_http_server.h"
 #include "FS.h" // SD Card ESP32
 #include "SD_MMC.h" // SD Card ESP32
+
+// Custom data structure
+typedef struct FileMessage // For wrap file details before sending to queue
+{
+  char fileName[40];
+  unsigned long fileSize;
+} FileMessage;
+
+enum relative // Used when setting position within a file stream.
+{
+  FROM_START,
+  FROM_CURRENT,
+  FROM_END
+};
 
 #define CAMERA_MODEL_AI_THINKER
 
@@ -357,10 +357,6 @@ camera_fb_t * frame = NULL;
 // Global variable, use for function callback when sending file to telegram
 FILE *pFile;
 unsigned long lSize;
-
-// Forward declaration
-void fatalError();
-String ip2Str(IPAddress);
 
 void setup() {
   // Setup led pin
@@ -1334,7 +1330,7 @@ void create_tasks() {
   xReturned = xTaskCreatePinnedToCore(
     vBlynkSubroutine,
     "Blynk subroutine",
-    2048,
+    3072,
     NULL,
     3,
     &xBlynkTaskHandle,
