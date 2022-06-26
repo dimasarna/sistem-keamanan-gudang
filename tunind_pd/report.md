@@ -1,3 +1,7 @@
+## Grafik
+
+![Step Test for Tuning](./cohen-coon.jpg "Step Test for Tuning")
+
 ## Deskripsi
 
 `gp = change in PV [in %] / change in CO [in %]`
