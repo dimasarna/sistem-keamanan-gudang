@@ -1,46 +1,62 @@
+// Comment to turn off blynk debug
+#define BLYNK_PRINT Serial
+
+#include <BlynkSimpleEsp32.h>
+#include <WiFiClientSecure.h>
+#include <UniversalTelegramBot.h>
+
+// Add blynk event handler
 #include "blynk_event.h"
+
+// Create secure http client
+WiFiClientSecure ssl_client;
+
+// Telegram configuration
+#define NOTIF_BOT_TOKEN "5593489325:AAHkoog4XIb2hLRbuLtPXWIjIORKMjrfuw4"
+#define FILE_BOT_TOKEN "5444169310:AAFDGSK7UQYLmaqgUHVqOeHxQIPka2eUA9I"
+#define CHAT_ID "1673327336"
+
+// Blynk configuration
+char blynk_auth[] = "iAyCtkH5JVMF55GKxrsqbLLA2QJsAX4p";
+char blynk_host[] = "54.67.18.187";
+uint16_t blynk_port = 8080;
 
 // Global variable, use for function callback when sending file to telegram
 FILE *pFile;
 unsigned long lSize;
 
-bool isMoreDataAvailable()
-{
-  return lSize - ftell(pFile);
-}
-
-byte getNextByte()
-{
-  uint8_t result;
-  fread(&result, 1, 1, pFile);
-  return result;
-}
+// Function callback when sending file to telegram
+bool isMoreDataAvailable() { return lSize - ftell(pFile); }
+byte getNextByte() { uint8_t result; fread(&result, 1, 1, pFile); return result; }
 
 void vBlynkSubroutine(void *pvParameters) {
   _PL("> Run blynk subroutine");
-  
-  Dictionary& pd = *pd_ptr;
 
   _PL("Blynk parameters:");
-  _PP("blynk_auth: "); _PL(pd["blynk_auth"].c_str());
-  _PP("blynk_host: "); _PL(pd["blynk_host"].c_str());
-  _PP("blynk_port: "); _PL(pd["blynk_port"].toInt());
+  _PP("blynk_auth: "); _PL(blynk_auth);
+  _PP("blynk_host: "); _PL(blynk_host);
+  _PP("blynk_port: "); _PL(blynk_port);
 
-  Blynk.config(pd["blynk_auth"].c_str(), pd["blynk_host"].c_str(), pd["blynk_port"].toInt());
+  Blynk.config(blynk_auth, blynk_host, blynk_port);
+  bool result = Blynk.connect();
+  if (!result) {
+    _PL("Failed connect to blynk server");
+    fatalError();
+  }
   
   for (;;) {
     Blynk.run();
-    vTaskDelay(20 / portTICK_PERIOD_MS);
+    vTaskDelay(50 / portTICK_PERIOD_MS);
   }
 }
 
 void vSensorSubroutine(void *pvParameters) {
   _PL("> Run sensor subroutine");
   
-  unsigned long currentMillis    = 0; // Current time
-  unsigned long lastMotion       = 0; // Last time we detected movement
-  uint8_t SENSOR_STATE         = LOW; // Keep recent sensor state
-  uint16_t motionCounter = 0; // Keep track of total motion detected
+  unsigned long currentMillis = 0; // Current time
+  unsigned long lastMotion = 0; // Last time we detected movement
+  uint8_t SENSOR_STATE = LOW; // Keep recent sensor state
+  unsigned int motionCounter = 0; // Keep track of total motion detected
 
   char sndMessage[100];
   
@@ -117,17 +133,14 @@ void vRecordSubroutine(void *pvParameters) {
 
 void vMessageBotSubroutine(void *pvParameters) {
   _PL("> Run message bot");
-  Dictionary& pd = *pd_ptr;
+  
   char rcvMessage[100];
 
   _PL("Bot parameters:");
-  _PP("bot_token: "); _PL(pd["notif_token"].c_str());
-  _PP("chat_id: "); _PL(pd["chat_id"].c_str());
-
-  String bot_token = String(pd["notif_token"]);
-  String chat_id = String(pd["chat_id"]);
+  _PP("bot_token: "); _PL(NOTIF_BOT_TOKEN);
+  _PP("chat_id: "); _PL(CHAT_ID);
   
-  UniversalTelegramBot notification_bot(bot_token, ssl_client);
+  UniversalTelegramBot notification_bot(NOTIF_BOT_TOKEN, ssl_client);
   
   for (;;) {
     // Waiting for message in queue
@@ -137,7 +150,7 @@ void vMessageBotSubroutine(void *pvParameters) {
     xSemaphoreTake(xMutex, portMAX_DELAY);
 
     // Send message to bot
-    notification_bot.sendMessage(chat_id, rcvMessage, "");
+    notification_bot.sendMessage(CHAT_ID, rcvMessage, "");
 
     // Give mutex key
     xSemaphoreGive(xMutex);
@@ -146,17 +159,14 @@ void vMessageBotSubroutine(void *pvParameters) {
 
 void vFileBotSubroutine(void *pvParameters) {
   _PL("> Run file bot");
-  Dictionary& pd = *pd_ptr;
+  
   FileMessage RxFileMessage;
 
   _PL("Bot parameters:");
-  _PP("bot_token: "); _PL(pd["file_token"].c_str());
-  _PP("chat_id: "); _PL(pd["chat_id"].c_str());
-
-  String bot_token = String(pd["file_token"]);
-  String chat_id = String(pd["chat_id"]);
+  _PP("bot_token: "); _PL(FILE_BOT_TOKEN);
+  _PP("chat_id: "); _PL(CHAT_ID);
   
-  UniversalTelegramBot file_bot(bot_token, ssl_client);
+  UniversalTelegramBot file_bot(FILE_BOT_TOKEN, ssl_client);
   
   for (;;) {
     // Waiting for message in queue
@@ -164,32 +174,31 @@ void vFileBotSubroutine(void *pvParameters) {
 
     // Open file with information that has received
     lSize = RxFileMessage.fileSize; // Save information to global variable about file size
+    
     pFile = fopen(RxFileMessage.fileName, "rb");
     if (pFile == NULL)  
     {
-      _PP("Unable to open AVI file ");
+      _PP("Error open AVI file to send: ");
       _PL(RxFileMessage.fileName);
-      return;  
-    }  
-    else
-    {
-      _PP(RxFileMessage.fileName);
-      _PL(" opened.");
+      continue;  
     }
-  
-    // Report file size
-    _PP("File size: "); _PL(lSize);
-  
+
+    _PP("Sending file: "); _PL(RxFileMessage.fileName);
+    unsigned long startUploadTime = millis();
+    
     // Take mutex key
     xSemaphoreTake(xMutex, portMAX_DELAY);
     
     // Sending file to bot
     file_bot.sendMultipartFormDataToTelegram("sendDocument", "document", RxFileMessage.fileName,
-        "image/jpeg", chat_id, RxFileMessage.fileSize,
+        "image/jpeg", CHAT_ID, RxFileMessage.fileSize,
         isMoreDataAvailable, getNextByte, nullptr, nullptr);
     
     // Give mutex key
     xSemaphoreGive(xMutex);
+
+    unsigned long endUploadTime = millis();
+    _PF("Uploading time: %d ms\n", endUploadTime - startUploadTime);
   
     // Sent success, close file
     fclose(pFile);
@@ -216,11 +225,11 @@ void create_tasks() {
   xReturned = xTaskCreatePinnedToCore(
     vBlynkSubroutine,
     "Blynk subroutine",
-    2048,
+    3072,
     NULL,
     3,
     &xBlynkTaskHandle,
-    PRO_CPU);
+    tskNO_AFFINITY);
 
   if( xReturned != pdPASS ) fatalError();
 
@@ -231,7 +240,7 @@ void create_tasks() {
     NULL,
     2,
     &xSensorTaskHandle,
-    APP_CPU);
+    PRO_CPU);
 
   if( xReturned != pdPASS ) fatalError();
 

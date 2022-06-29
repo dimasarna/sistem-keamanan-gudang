@@ -3,7 +3,7 @@
 #define APPVER "1.0.0"
 #define APPTOKEN "SECURECAM"
 #define EEPROM_MAX 4096
-#define APPHOST "192.168.216.13"
+#define APPHOST "54.67.18.187"
 #define APPPORT 80
 #define APPURL "/esp/esp32.php"
 
@@ -27,14 +27,11 @@
 
 #include <WiFi.h>
 #include <WiFiClient.h>
-#include <WiFiClientSecure.h>
 #include <ParametersEEPROM.h>
 #include <EspBootstrapDict.h>
 #include <JsonConfigHttp.h>
 #include <ESP32Time.h>
 #include <HTTPUpdate.h>
-#include <BlynkSimpleEsp32.h>
-#include <UniversalTelegramBot.h>
 
 //#include <mdns.h>
 #include <esp_bt.h>
@@ -59,12 +56,12 @@ const byte BUZZERPIN = 12;
 uint32_t freq = 2000;
 uint8_t channel = 15, resolutionBits = 8;
 
-const char SSID1[] = "POCO X3 NFC";
-const char PWD1[] = "iyasebentar";
+const char SSID1[] = "Enggar";
+const char PWD1[] = "drenggarbaik";
 
 // Configuration for bootstrap
 const String TOKEN(APPTOKEN);
-const byte NPARS = 15;
+const byte NPARS = 8;
 const byte NPARS_WEB = 3;
 Dictionary* pd_ptr = NULL;
 ParametersEEPROM* pp_ptr = NULL;
@@ -96,8 +93,12 @@ SemaphoreHandle_t xMutex;
 // Declare RTOS queue
 QueueHandle_t xMessageQueue, xFileQueue;
 
-// Create secure http client
-WiFiClientSecure ssl_client;
+// For wrap file details before sending to queue
+typedef struct FileMessage
+{
+  char fileName[40];
+  unsigned long fileSize;
+} FileMessage;
 
 #include "error_handler.h"
 #include "avi_program.h"
@@ -162,14 +163,14 @@ void setup() {
   
   // Create and run task
   create_tasks();
-
-  // Delete loop task
+  
+  // Delete setup and loop task
   vTaskDelete(NULL);
 }
 
-void loop() {
-}
+void loop() {}
 
+// Helper function to make config uri
 String makeConfig(String path) {
   String cfg(path);
   if (!cfg.endsWith("/")) cfg += "/";
@@ -227,18 +228,15 @@ void setup_parameters() {
 
   pd("Title", "Security Camera Initial Config");
   pd("ssid", SSID1);
-  pd("password", PWD1);
-  pd("cfg_url", "http://192.168.216.13/esp/config/");
-  pd("ota_host", APPHOST);
-  pd("ota_port", APPPORT);
-  pd("ota_url", APPURL);
+  pd("pwd", PWD1);
+  pd("cfg_url", "http://54.67.18.187/esp/config/");
 
   rc = pp.load();
-
   _PL("> Connecting to WiFi for 20 sec:");
-  setupWifi(pd["ssid"].c_str(), pd["password"].c_str());
+  setupWifi(pd["ssid"].c_str(), pd["pwd"].c_str());
   wifiTimeout = waitForWifi(20 * BOOTSTRAP_SECOND);
 
+  bool configSaved = false;
   if (!wifiTimeout) {
     _PL(makeConfig(pd["cfg_url"]));
     rc = JSONConfig.parse(makeConfig(pd["cfg_url"]), pd);
@@ -247,9 +245,9 @@ void setup_parameters() {
     _PP("Current dictionary count = "); _PL(pd.count());
     _PP("Current dictionary size = "); _PL(pd.size());
 
-    if (rc == JSON_OK) pd("saved", "ok");
+    if (rc == JSON_OK) configSaved = true;
   }
-  if (wifiTimeout || !(rc == JSON_OK || pd("saved"))) {
+  if (wifiTimeout || !(rc == JSON_OK || configSaved)) {
     _PL("> Device needs bootstrapping!");
     rc = ESPBootstrap.run(pd, NPARS_WEB, 10 * BOOTSTRAP_MINUTE);
 
@@ -361,6 +359,7 @@ void check_update() {
   }
 }
 
+// This is function callback for handling streaming to the client
 esp_err_t jpg_stream_httpd_handler(httpd_req_t *req) {
     camera_fb_t * fb = NULL;
     esp_err_t res = ESP_OK;
@@ -414,7 +413,7 @@ esp_err_t jpg_stream_httpd_handler(httpd_req_t *req) {
             break;
         }
         
-        vTaskDelay(100 / portTICK_PERIOD_MS);
+        vTaskDelay(67 / portTICK_PERIOD_MS);
     }
     
     return res;

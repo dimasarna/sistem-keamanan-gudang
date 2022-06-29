@@ -1,13 +1,23 @@
-String ip2Str(IPAddress ip){
-  String s="";
-  for (int i=0; i<4; i++) {
+// Helper function to convert IP address to string
+String IPToString(IPAddress ip) {
+  String s = "";
+  for (int i = 0; i < 4; i++) {
     s += i  ? "." + String(ip[i]) : String(ip[i]);
   }
   return s;
+};
+
+void sendIPToBlynk() {
+  String url = "http://" + IPToString(WiFi.localIP());
+  Blynk.setProperty(V1, "url", url.c_str());
+};
+
+// Send IP address after connected to blynk
+BLYNK_CONNECTED() {
+  Blynk.syncAll();
+  sendIPToBlynk();
 }
 
-BLYNK_CONNECTED() {
-  String url = "http://" + ip2Str(WiFi.localIP());
-  Blynk.setProperty(V1, "url", url.c_str());
-  Blynk.syncAll();
+BLYNK_APP_CONNECTED() {
+  sendIPToBlynk();
 }

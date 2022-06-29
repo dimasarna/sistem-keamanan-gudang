@@ -54,8 +54,8 @@ const byte aviHeader[AVI_HEADER_SIZE] = // This is the AVI file header.  Some of
   0x00, 0x00, 0x00, 0x00,  // 0x34 0              dwInitialFrames (used for interleaved files only)
   0x01, 0x00, 0x00, 0x00,  // 0x38 1              dwStreams (just video)
   0x00, 0x00, 0x00, 0x00,  // 0x3C 0             dwSuggestedBufferSize
-  0x80, 0x02, 0x00, 0x00,  // 0x40 640          dwWidth - 640 (VGA)                   [based on FRAMESIZE] 
-  0xE0, 0x01, 0x00, 0x00,  // 0x44 480          dwHeight - 480 (VGA)                  [based on FRAMESIZE] 
+  0x40, 0x01, 0x00, 0x00,  // 0x40 320          dwWidth - 320 (QVGA)                [based on FRAMESIZE] 
+  0xF0, 0x00, 0x00, 0x00,  // 0x44 240          dwHeight - 240 (VGA)                  [based on FRAMESIZE] 
   0x00, 0x00, 0x00, 0x00,  // 0x48                dwReserved
   0x00, 0x00, 0x00, 0x00,  // 0x4C                dwReserved
   0x00, 0x00, 0x00, 0x00,  // 0x50                dwReserved
@@ -84,8 +84,8 @@ const byte aviHeader[AVI_HEADER_SIZE] = // This is the AVI file header.  Some of
   0x73, 0x74, 0x72, 0x66,  // 0x9C "strf"    Stream format header
   0x28, 0x00, 0x00, 0x00,  // 0xA0 40        Structure length
   0x28, 0x00, 0x00, 0x00,  // 0xA4 40        BITMAPINFOHEADER length (same as above)
-  0x80, 0x02, 0x00, 0x00,  // 0xA8 640      Width                  [based on FRAMESIZE] 
-  0xE0, 0x01, 0x00, 0x00,  // 0xAC 480      Height                 [based on FRAMESIZE] 
+  0x40, 0x01, 0x00, 0x00,  // 0xA8 320      Width                  [based on FRAMESIZE] 
+  0xF0, 0x00, 0x00, 0x00,  // 0xAC 240      Height                 [based on FRAMESIZE] 
   0x01, 0x00,                     // 0xB0 1          Planes  
   0x18, 0x00,                     // 0xB2 24        Bit count (bit depth once uncompressed)
   0x4D, 0x4A, 0x50, 0x47,  // 0xB4 "MJPG" Compression 
@@ -126,13 +126,7 @@ FILE *aviFile; // AVI file
 FILE *idx1File; // Temporary file used to hold the index information
 char AVIFilename[40]; // Filename string
 
-typedef struct FileMessage // For wrap file details before sending to queue
-{
-  char fileName[40];
-  unsigned long fileSize;
-} FileMessage;
-
-FileMessage AFileMessage;
+FileMessage AFileMessage; // File details wrapper
 
 enum relative // Used when setting position within a file stream.
 {

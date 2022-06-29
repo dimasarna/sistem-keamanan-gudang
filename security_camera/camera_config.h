@@ -123,10 +123,10 @@ static camera_config_t camera_config = {
     .ledc_channel = LEDC_CHANNEL_1,
 
     .pixel_format = PIXFORMAT_JPEG, //YUV422,GRAYSCALE,RGB565,JPEG
-    .frame_size = FRAMESIZE_VGA, //QQVGA-QXGA Do not use sizes above QVGA when not JPEG
+    .frame_size = FRAMESIZE_QVGA, //QQVGA-QXGA Do not use sizes above QVGA when not JPEG
 
     .jpeg_quality = 12, //0-63 lower number means higher quality
-    .fb_count = 10, //if more than one, i2s runs in continuous mode. Use only with JPEG
+    .fb_count = 20, //if more than one, i2s runs in continuous mode. Use only with JPEG
     .grab_mode = CAMERA_GRAB_LATEST //Sets when buffers should be filled
 };
 
